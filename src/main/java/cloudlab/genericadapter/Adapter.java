@@ -76,30 +76,31 @@ public class Adapter extends HttpServlet {
         int index = 0;
         for (Descriptors.FieldDescriptor f : fieldDescriptors) {
             char first = Character.toUpperCase(f.getName().charAt(0));
-            String setMethodName = "set" + first + f.getName().substring(1);
-            System.out.println("setMethodName = " + setMethodName);
-            if (f.getJavaType().toString().toLowerCase().equals("enum")) {
-                setMethodName += "Value";
+
+            String methodName;
+            if (f.isRepeated()) {
+                methodName = "add" + first + f.getName().substring(1);
+            } else {
+                methodName = "set" + first + f.getName().substring(1);
+                if (f.getJavaType().toString().toLowerCase().equals("enum")) {
+                    methodName += "Value";
+                }
             }
+            System.out.println("methodName = " + methodName);
             Method setMethod;
             try {
-                if (f.isRepeated()) {
-                    setMethod = builderObject.getClass().getDeclaredMethod(setMethodName, int.class, ProtoParser.getJavaClass(f.getJavaType().toString()));
-                    builderObject = setMethod.invoke(builderObject, 0, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()));
-                } else {
-                    setMethod = builderObject.getClass().getDeclaredMethod(setMethodName, ProtoParser.getJavaClass(f.getJavaType().toString()));
-                    builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()));
-                }
+                setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString()));
+                builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()));
                 System.out.println("setMethod.getName() = " + setMethod.getName());
                 System.out.println("Setting value: " + requestParameters.get(index));
                 System.out.println("Wrapper class: " + ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()).getClass());
                 index++;
             } catch (NoSuchMethodException e) {
-                logger.log(Level.WARNING, "No such method " + setMethodName, e);
+                logger.log(Level.WARNING, "No such method " + methodName, e);
             } catch (InvocationTargetException e) {
-                logger.log(Level.WARNING, "Cannot invoke method " + setMethodName, e);
+                logger.log(Level.WARNING, "Cannot invoke method " + methodName, e);
             } catch (IllegalAccessException e) {
-                logger.log(Level.WARNING, "Cannot access method " + setMethodName, e);
+                logger.log(Level.WARNING, "Cannot access method " + methodName, e);
             }
         }
 
