@@ -40,6 +40,7 @@ public class ProtoParser {
     }
 
     public static Class getJavaClass(String javaType) {
+        System.out.println("javaType = " + javaType);
         if (javaType.toLowerCase().equals("string")) {
             return String.class;
         } else if (javaType.toLowerCase().equals("float")) {
@@ -52,6 +53,8 @@ public class ProtoParser {
             return double.class;
         } else if (javaType.toLowerCase().equals("boolean")) {
             return boolean.class;
+        } else if (javaType.toLowerCase().equals("enum")) {
+            return int.class;
         }
         System.out.println("No equivalent Java Type found for: " + javaType);
         return null;
@@ -75,7 +78,7 @@ public class ProtoParser {
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
-        } else if (javaType.toLowerCase().equals("int")) {
+        } else if (javaType.toLowerCase().equals("int") || javaType.toLowerCase().equals("enum")) {
             try {
                 Class intClass = Class.forName("java.lang.Integer");
                 String methodName = "parseInt";
