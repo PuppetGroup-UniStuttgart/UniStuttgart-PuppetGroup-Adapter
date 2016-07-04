@@ -6,6 +6,7 @@ import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,7 +18,7 @@ public class ProtoParser {
 
     public static HashMap<String, String> parse() {
         HashMap<String, String> parsedMap = new HashMap<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(new File("/api/main.proto")))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(new File("C:\\Users\\shreyasbr\\IdeaProjects\\AdapterTrial\\src\\main\\proto\\main.proto")))) {
             String line;
             while ((line = br.readLine()) != null) {
                 if (line.startsWith("package")) {
@@ -55,6 +56,8 @@ public class ProtoParser {
             return boolean.class;
         } else if (javaType.toLowerCase().equals("enum")) {
             return int.class;
+        } else if(javaType.toLowerCase().equals("message")) {
+            return Map.class;
         }
         System.out.println("No equivalent Java Type found for: " + javaType);
         return null;
@@ -138,6 +141,8 @@ public class ProtoParser {
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
+        } else if(javaType.toLowerCase().equals("message")) {
+            return (Map)paramString;
         }
         return null;
     }
