@@ -427,7 +427,7 @@ public class Adapter extends HttpServlet {
             pType = (ParameterizedType) parametersList[0].getParameterizedType();
             logger.log(Level.INFO, "Parameterized Type: " + parametersList[0].getParameterizedType());
         } catch (ClassCastException e) {
-            logger.log(Level.INFO, "Non-streaming case. Not casting to ParameterizedType", e);
+            logger.log(Level.INFO, "Non-streaming case. Not casting to ParameterizedType");
         }
         return pType;
     }
