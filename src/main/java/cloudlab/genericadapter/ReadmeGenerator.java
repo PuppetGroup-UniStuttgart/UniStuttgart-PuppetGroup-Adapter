@@ -1,6 +1,5 @@
 package cloudlab.genericadapter;
 
-import cloudlab.TestOpsProto.TestGrpc;
 import cloudlab.protoparser.ProtoParser;
 import com.google.protobuf.Descriptors;
 import io.grpc.stub.StreamObserver;
