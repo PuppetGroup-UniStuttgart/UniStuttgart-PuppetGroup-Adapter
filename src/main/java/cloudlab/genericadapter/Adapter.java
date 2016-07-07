@@ -1,6 +1,5 @@
 package cloudlab.genericadapter;
 
-import cloudlab.TestOpsProto.Main;
 import cloudlab.protoparser.ProtoParser;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.Descriptors;
