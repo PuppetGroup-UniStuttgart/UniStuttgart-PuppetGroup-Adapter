@@ -20,7 +20,6 @@ public class ProtoParser {
 
     public static HashMap<String, String> parse() {
         HashMap<String, String> parsedMap = new HashMap<>();
-        String methodNames = "";
         try (BufferedReader br = new BufferedReader(new FileReader(new File("/api/main.proto")))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -32,13 +31,8 @@ public class ProtoParser {
                     String serviceName = line.split(" ")[1];
                     System.out.println("serviceName = " + serviceName);
                     parsedMap.put("serviceName", serviceName);
-                } else if (line.trim().startsWith("rpc")) {
-                    methodNames += line.split(" ")[2].split("\\(")[0] + ",";
                 }
             }
-            methodNames = methodNames.substring(0, methodNames.length() - 1);
-            System.out.println("methodNames = " + methodNames);
-            parsedMap.put("methodNames", methodNames);
         } catch (FileNotFoundException e) {
             logger.log(Level.WARNING, "Proto file not found", e);
         } catch (IOException e) {
@@ -46,10 +40,6 @@ public class ProtoParser {
         }
         System.out.println("parsedMap = " + parsedMap);
         return parsedMap;
-    }
-
-    public static void main(String[] args) {
-        parse();
     }
 
     public static Class getJavaClass(String javaType, Descriptors.FieldDescriptor f) {
