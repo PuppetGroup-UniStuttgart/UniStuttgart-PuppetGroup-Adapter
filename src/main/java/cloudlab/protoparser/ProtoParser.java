@@ -1,11 +1,13 @@
 package cloudlab.protoparser;
 
-import cloudlab.genericadapter.Adapter;
+import com.google.protobuf.Descriptors;
+import net.minidev.json.JSONArray;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -40,8 +42,11 @@ public class ProtoParser {
         return parsedMap;
     }
 
-    public static Class getJavaClass(String javaType) {
+    public static Class getJavaClass(String javaType, Descriptors.FieldDescriptor f) {
         System.out.println("javaType = " + javaType);
+        if(f.isRepeated() && !f.isMapField()) {
+            return Iterable.class;
+        }
         if (javaType.toLowerCase().equals("string")) {
             return String.class;
         } else if (javaType.toLowerCase().equals("float")) {
@@ -63,7 +68,11 @@ public class ProtoParser {
         return null;
     }
 
-    public static Object getWrapperObject(Object paramString, String javaType) {
+    public static Object getWrapperObject(Object paramString, String javaType, Descriptors.FieldDescriptor f) {
+        if(f.isRepeated() && !f.isMapField()) {
+            JSONArray array = (JSONArray) paramString;
+            return array;
+        }
         if (javaType.toLowerCase().equals("string")) {
             return paramString;
         } else if (javaType.toLowerCase().equals("float")) {
