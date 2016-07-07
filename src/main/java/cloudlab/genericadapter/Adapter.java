@@ -1,5 +1,6 @@
 package cloudlab.genericadapter;
 
+import cloudlab.TestOpsProto.Main;
 import cloudlab.protoparser.ProtoParser;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.protobuf.Descriptors;
@@ -161,12 +162,12 @@ public class Adapter extends HttpServlet {
                     logger.log(Level.INFO, "methodName = " + methodName);
                     Method setMethod = null;
                     try {
-                        setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString()));
+                        setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString(), f));
                     } catch (NoSuchMethodException e) {
                         logger.log(Level.WARNING, e.getMessage(), e);
                     }
                     try {
-                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameter, f.getJavaType().toString()));
+                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameter, f.getJavaType().toString(), f));
                     } catch (IllegalAccessException e) {
                         logger.log(Level.WARNING, e.getMessage(), e);
                     } catch (InvocationTargetException e) {
@@ -231,11 +232,11 @@ public class Adapter extends HttpServlet {
                     logger.log(Level.INFO, "methodName = " + methodName);
                     Method setMethod;
                     try {
-                        setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString()));
-                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()));
+                        setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString(), f));
+                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString(), f));
                         logger.log(Level.INFO, "setMethod.getName() = " + setMethod.getName());
                         logger.log(Level.INFO, "Setting value: " + requestParameters.get(index));
-                        logger.log(Level.INFO, "Wrapper class: " + ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString()).getClass());
+                        logger.log(Level.INFO, "Wrapper class: " + ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString(), f).getClass());
                         index++;
                     } catch (NoSuchMethodException e) {
                         logger.log(Level.WARNING, "No such method " + methodName, e);
@@ -329,7 +330,7 @@ public class Adapter extends HttpServlet {
         String methodName;
         char first = Character.toUpperCase(f.getName().charAt(0));
         if (f.isRepeated() && !f.isMapField()) {
-            methodName = "add" + first + f.getName().substring(1);
+            methodName = "addAll" + first + f.getName().substring(1);
         } else if (f.isMapField()) {
             methodName = "putAll" + first + f.getName().substring(1);
         } else {
