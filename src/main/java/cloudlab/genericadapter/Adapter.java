@@ -51,7 +51,8 @@ public class Adapter extends HttpServlet {
     @Override
     public void init() throws ServletException {
         Map<String, String> env = System.getenv();
-        channel = ManagedChannelBuilder.forAddress(env.get("API_HOST"), Integer.parseInt(env.get("API_PORT"))).usePlaintext(true).build();
+//        channel = ManagedChannelBuilder.forAddress(env.get("API_HOST"), Integer.parseInt(env.get("API_PORT"))).usePlaintext(true).build();
+        channel = ManagedChannelBuilder.forAddress("localhost", 50053).usePlaintext(true).build();
         responseList = new ArrayList<>();
         requestParametersIndex = 0;
         requestPending = false;
@@ -342,7 +343,7 @@ public class Adapter extends HttpServlet {
         return methodName;
     }
 
-    private Object getBlockingStub(String serviceName) {
+    public Object getBlockingStub(String serviceName) {
         HashMap<String, String> parsedMap = ProtoParser.parse();
         Class cls;
         Object blockingStubObject = null;
@@ -366,7 +367,7 @@ public class Adapter extends HttpServlet {
         return blockingStubObject;
     }
 
-    private Object getStub(String serviceName) {
+    public Object getStub(String serviceName) {
         HashMap<String, String> parsedMap = ProtoParser.parse();
         Class cls;
         Object stubObject = null;
@@ -390,11 +391,13 @@ public class Adapter extends HttpServlet {
         return stubObject;
     }
 
-    private Method getMethodToInvoke(Object blockingStub, String methodToInvokeName) {
+    public Method getMethodToInvoke(Object blockingStub, String methodToInvokeName) {
         Method methodToInvoke = null;
         Method[] methods = blockingStub.getClass().getDeclaredMethods();
         for (Method method : methods) {
-            if (method.getName().equals(methodToInvokeName)) {
+            System.out.println("method.getName() = " + method.getName());
+            System.out.println("Comparing " + method.getName().toLowerCase().trim() + " with " + methodToInvokeName.toLowerCase().trim());
+            if (method.getName().toLowerCase().trim().equals(methodToInvokeName.toLowerCase().trim())) {
                 methodToInvoke = method;
             }
         }
@@ -402,7 +405,7 @@ public class Adapter extends HttpServlet {
         return methodToInvoke;
     }
 
-    private Class getRequestClass(Method methodToInvoke) {
+    public Class getRequestClass(Method methodToInvoke) {
         Class requestClass = null;
         Parameter[] parametersList = methodToInvoke.getParameters();
         requestClass = parametersList[0].getType();
@@ -421,7 +424,7 @@ public class Adapter extends HttpServlet {
         return responseClass;
     }
 
-    private ParameterizedType getParameterizedType(Method methodToInvoke) {
+    public ParameterizedType getParameterizedType(Method methodToInvoke) {
         ParameterizedType pType = null;
         Parameter[] parametersList = methodToInvoke.getParameters();
         try {
@@ -433,7 +436,7 @@ public class Adapter extends HttpServlet {
         return pType;
     }
 
-    private Object getRequestBuilderObject(Class requestClass) {
+    public Object getRequestBuilderObject(Class requestClass) {
         Method builderMethod;
         Object builderObject = null;
         try {
@@ -449,7 +452,7 @@ public class Adapter extends HttpServlet {
         return builderObject;
     }
 
-    private Descriptors.Descriptor getDescriptorObject(Object builderObject) {
+    public Descriptors.Descriptor getDescriptorObject(Object builderObject) {
         Method descriptorMethod;
         Descriptors.Descriptor descriptorObject = null;
         try {
