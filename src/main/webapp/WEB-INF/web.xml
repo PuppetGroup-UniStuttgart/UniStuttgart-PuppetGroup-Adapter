@@ -5,10 +5,6 @@
 <web-app>
     <display-name>Archetype Created Web Application</display-name>
     <servlet>
-        <servlet-name>HelloWorld</servlet-name>
-        <servlet-class>cloudlab.adaptertrial.JSONRpcServlet</servlet-class>
-    </servlet>
-    <servlet>
         <servlet-name>GenericAdapter</servlet-name>
         <servlet-class>cloudlab.genericadapter.Adapter</servlet-class>
     </servlet>
@@ -17,10 +13,6 @@
         <servlet-class>cloudlab.genericadapter.ReadmeGenerator</servlet-class>
     </servlet>
 
-    <servlet-mapping>
-        <servlet-name>HelloWorld</servlet-name>
-        <url-pattern>/HelloWorld</url-pattern>
-    </servlet-mapping>
     <servlet-mapping>
         <servlet-name>GenericAdapter</servlet-name>
         <url-pattern>/request</url-pattern>
