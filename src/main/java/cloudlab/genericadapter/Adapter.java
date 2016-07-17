@@ -11,6 +11,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -36,12 +37,12 @@ public class Adapter extends HttpServlet {
     private ManagedChannel channel;
     List<String> responseList;
     Iterator<String> responseListIterator;
-    int requestParametersIndex;
     boolean requestPending;
     boolean responseComplete;
     StreamObserver requestObserver;
     Object stub;
     SettableFuture<Void> finishFuture = SettableFuture.create();
+    int requestsReceivedCount = 0;
 
     public void shutdown() throws InterruptedException {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
@@ -52,15 +53,17 @@ public class Adapter extends HttpServlet {
         Map<String, String> env = System.getenv();
         channel = ManagedChannelBuilder.forAddress(env.get("API_HOST"), Integer.parseInt(env.get("API_PORT"))).usePlaintext(true).build();
         responseList = new ArrayList<>();
-        requestParametersIndex = 0;
         requestPending = false;
         responseComplete = false;
         requestObserver = null;
+
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        requestsReceivedCount++;
         PrintWriter out = resp.getWriter();
+
         String jsonString = req.getParameter("jsonString");
         JSONRPC2Request reqIn = null;
         try {
@@ -75,14 +78,18 @@ public class Adapter extends HttpServlet {
 
             Map<String, Object> paramsMap = reqIn.getNamedParams();
             String methodToInvokeName = reqIn.getMethod();
-            JSONArray requestParameters = (JSONArray) paramsMap.get("requestParameters");
+            /*JSONArray requestParameters = (JSONArray) paramsMap.get("requestParameters");*/
+            JSONObject requestParameters = (JSONObject) paramsMap.get("requestParameters");
             String serviceName = (String) paramsMap.get("serviceName");
-            logger.log(Level.INFO, "requestParameters.toString() = " + requestParameters.toString());
 
             if (!requestPending)
                 stub = getStub(serviceName);
             else
                 logger.log(Level.INFO, "Using existing stub");
+
+            requestPending = Boolean.parseBoolean((String) paramsMap.get("next"));
+            System.out.println("requestPending = " + requestPending);
+            logger.log(Level.INFO, "requestParameters.toString() = " + requestParameters.toString());
 
             Method methodToInvoke = getMethodToInvoke(stub, methodToInvokeName);
             if (methodToInvoke == null) {
@@ -111,15 +118,15 @@ public class Adapter extends HttpServlet {
                 }
                 logger.log(Level.INFO, "requestClass = " + requestClass);
                 Object builderObject = getRequestBuilderObject(requestClass);
+
+                // no more necessary - Actually necessary. Need to know type of field. Repeated, Map, etc
                 Descriptors.Descriptor descriptorObject = getDescriptorObject(builderObject);
                 List<Descriptors.FieldDescriptor> fieldDescriptors = descriptorObject.getFields();
 
 
-                if (!requestPending) {
+                if (requestsReceivedCount == 1) {
                     // instantiate a stream observer for response class. and add functionality to output
-                    ParameterizedType finalPType = pType;
                     StreamObserver responseObserver = new StreamObserver() {
-                        Class responseClass = getResponseClass(finalPType);
 
                         @Override
                         public void onNext(Object value) {
@@ -153,8 +160,8 @@ public class Adapter extends HttpServlet {
                     logger.log(Level.INFO, "Using existing requestStream");
                 }
 
-                for (Object requestParameter : requestParameters) {
-                    Descriptors.FieldDescriptor f = fieldDescriptors.get(requestParametersIndex);
+                for (String fieldName : requestParameters.keySet()) {
+                    Descriptors.FieldDescriptor f = descriptorObject.findFieldByName(fieldName);
 
                     String methodName = getFieldSetterMethodName(f);
 
@@ -166,7 +173,7 @@ public class Adapter extends HttpServlet {
                         logger.log(Level.WARNING, e.getMessage(), e);
                     }
                     try {
-                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameter, f.getJavaType().toString(), f));
+                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(fieldName), f.getJavaType().toString(), f));
                     } catch (IllegalAccessException e) {
                         logger.log(Level.WARNING, e.getMessage(), e);
                     } catch (InvocationTargetException e) {
@@ -174,7 +181,7 @@ public class Adapter extends HttpServlet {
                     }
 
                     logger.log(Level.INFO, "setMethod.getName() = " + setMethod.getName());
-                    logger.log(Level.INFO, "Setting: " + requestParameter);
+                    logger.log(Level.INFO, "Setting: " + requestParameters.get(fieldName));
 
                     Method buildMethod = null;
                     try {
@@ -194,15 +201,12 @@ public class Adapter extends HttpServlet {
 
                     // pass requestObject to onNext of requestObserver
                     requestObserver.onNext(requestObject);
-
-                    requestParametersIndex++;
                 }
 
-                if (requestParametersIndex == fieldDescriptors.size()) { // all request parameters received
+                if (!requestPending) { // all request parameters received - this logic will change
                     logger.log(Level.INFO, "Request complete");
                     requestPending = false;
                     requestObserver.onCompleted();
-                    requestParametersIndex = 0;
                     logger.log(Level.INFO, "Before future loop: " + finishFuture.isDone());
                     while (!finishFuture.isDone()) {
 
@@ -216,8 +220,7 @@ public class Adapter extends HttpServlet {
                         logger.log(Level.WARNING, e.getMessage(), e);
                     }
                 } else {
-                    requestPending = true;
-                    out.println((fieldDescriptors.size() - requestParametersIndex) + " request parameters pending.");
+                    out.println("Stream in progress.");
                 }
 
             } else {
@@ -226,16 +229,17 @@ public class Adapter extends HttpServlet {
                 Descriptors.Descriptor descriptorObject = getDescriptorObject(builderObject);
                 List<Descriptors.FieldDescriptor> fieldDescriptors = descriptorObject.getFields();
                 int index = 0;
-                for (Descriptors.FieldDescriptor f : fieldDescriptors) {
+                for (String fieldName : requestParameters.keySet()) {
+                    Descriptors.FieldDescriptor f = descriptorObject.findFieldByName(fieldName);
                     String methodName = getFieldSetterMethodName(f);
                     logger.log(Level.INFO, "methodName = " + methodName);
                     Method setMethod;
                     try {
                         setMethod = builderObject.getClass().getDeclaredMethod(methodName, ProtoParser.getJavaClass(f.getJavaType().toString(), f));
-                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString(), f));
+                        builderObject = setMethod.invoke(builderObject, ProtoParser.getWrapperObject(requestParameters.get(fieldName), f.getJavaType().toString(), f));
                         logger.log(Level.INFO, "setMethod.getName() = " + setMethod.getName());
-                        logger.log(Level.INFO, "Setting value: " + requestParameters.get(index));
-                        logger.log(Level.INFO, "Wrapper class: " + ProtoParser.getWrapperObject(requestParameters.get(index), f.getJavaType().toString(), f).getClass());
+                        logger.log(Level.INFO, "Setting value: " + requestParameters.get(fieldName));
+                        logger.log(Level.INFO, "Wrapper class: " + ProtoParser.getWrapperObject(requestParameters.get(fieldName), f.getJavaType().toString(), f).getClass());
                         index++;
                     } catch (NoSuchMethodException e) {
                         logger.log(Level.WARNING, "No such method " + methodName, e);
@@ -293,6 +297,9 @@ public class Adapter extends HttpServlet {
                 responseComplete = false;
             }
             JSONRPC2Response rpcResponse = new JSONRPC2Response(response, responseID);
+
+            requestsReceivedCount = 0; // re-initializing since current request stream is done
+
             out.println(rpcResponse.toString());
         }
     }
@@ -341,7 +348,7 @@ public class Adapter extends HttpServlet {
         return methodName;
     }
 
-    private Object getBlockingStub(String serviceName) {
+    public Object getBlockingStub(String serviceName) {
         HashMap<String, String> parsedMap = ProtoParser.parse();
         Class cls;
         Object blockingStubObject = null;
@@ -365,7 +372,7 @@ public class Adapter extends HttpServlet {
         return blockingStubObject;
     }
 
-    private Object getStub(String serviceName) {
+    public Object getStub(String serviceName) {
         HashMap<String, String> parsedMap = ProtoParser.parse();
         Class cls;
         Object stubObject = null;
@@ -389,11 +396,13 @@ public class Adapter extends HttpServlet {
         return stubObject;
     }
 
-    private Method getMethodToInvoke(Object blockingStub, String methodToInvokeName) {
+    public Method getMethodToInvoke(Object blockingStub, String methodToInvokeName) {
         Method methodToInvoke = null;
         Method[] methods = blockingStub.getClass().getDeclaredMethods();
         for (Method method : methods) {
-            if (method.getName().equals(methodToInvokeName)) {
+            System.out.println("method.getName() = " + method.getName());
+            System.out.println("Comparing " + method.getName().toLowerCase().trim() + " with " + methodToInvokeName.toLowerCase().trim());
+            if (method.getName().toLowerCase().trim().equals(methodToInvokeName.toLowerCase().trim())) {
                 methodToInvoke = method;
             }
         }
@@ -401,7 +410,7 @@ public class Adapter extends HttpServlet {
         return methodToInvoke;
     }
 
-    private Class getRequestClass(Method methodToInvoke) {
+    public Class getRequestClass(Method methodToInvoke) {
         Class requestClass = null;
         Parameter[] parametersList = methodToInvoke.getParameters();
         requestClass = parametersList[0].getType();
@@ -420,7 +429,7 @@ public class Adapter extends HttpServlet {
         return responseClass;
     }
 
-    private ParameterizedType getParameterizedType(Method methodToInvoke) {
+    public ParameterizedType getParameterizedType(Method methodToInvoke) {
         ParameterizedType pType = null;
         Parameter[] parametersList = methodToInvoke.getParameters();
         try {
@@ -432,7 +441,7 @@ public class Adapter extends HttpServlet {
         return pType;
     }
 
-    private Object getRequestBuilderObject(Class requestClass) {
+    public Object getRequestBuilderObject(Class requestClass) {
         Method builderMethod;
         Object builderObject = null;
         try {
@@ -448,7 +457,7 @@ public class Adapter extends HttpServlet {
         return builderObject;
     }
 
-    private Descriptors.Descriptor getDescriptorObject(Object builderObject) {
+    public Descriptors.Descriptor getDescriptorObject(Object builderObject) {
         Method descriptorMethod;
         Descriptors.Descriptor descriptorObject = null;
         try {
