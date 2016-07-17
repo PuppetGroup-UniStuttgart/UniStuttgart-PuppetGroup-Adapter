@@ -1,4 +1,4 @@
-/*package cloudlab.genericadapter;
+package cloudlab.genericadapter;
 
 import cloudlab.protoparser.ProtoParser;
 import com.google.protobuf.Descriptors;
@@ -20,7 +20,7 @@ import java.util.logging.Level;
 /**
  * Created by shreyasbr on 07-07-2016.
  */
-/*public class ReadmeGenerator extends HttpServlet {
+public class ReadmeGenerator extends HttpServlet {
     Adapter adapter;
     @Override
     public void init() throws ServletException {
@@ -77,4 +77,4 @@ import java.util.logging.Level;
             out.println("</html></body>");
         }
     }
-}*/
+}
