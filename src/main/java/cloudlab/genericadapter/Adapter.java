@@ -77,10 +77,9 @@ public class Adapter extends HttpServlet {
             finishFuture = SettableFuture.create();
 
             Map<String, Object> paramsMap = reqIn.getNamedParams();
-            String methodToInvokeName = reqIn.getMethod();
-            /*JSONArray requestParameters = (JSONArray) paramsMap.get("requestParameters");*/
+            String serviceName = reqIn.getMethod().split(":")[0];
+            String methodToInvokeName = reqIn.getMethod().split(":")[1];
             JSONObject requestParameters = (JSONObject) paramsMap.get("requestParameters");
-            String serviceName = (String) paramsMap.get("serviceName");
 
             if (!requestPending)
                 stub = getStub(serviceName);
