@@ -1,2 +1,2 @@
-# CloudLab-IAAS-UniStuttgart-Part3-Adapter
+# UniStuttgart-PuppetGroup-Adapter
 Contains the java project of the JSON-RPC adapter
